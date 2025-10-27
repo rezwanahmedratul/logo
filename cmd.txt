@@ -1,0 +1,12 @@
+$ports = 12345..12364
+foreach ($p in $ports) {
+    netsh advfirewall firewall add rule name="Shadowsocks_TCP_$p" dir=in action=allow protocol=TCP localport=$p
+    netsh advfirewall firewall add rule name="Shadowsocks_UDP_$p" dir=in action=allow protocol=UDP localport=$p
+}
+
+
+
+Win + R → taskschd.msc
+Shadowsocks Server
+wscript.exe
+"C:\sserver\run_ss.vbs"
