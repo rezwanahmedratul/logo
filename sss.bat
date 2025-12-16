@@ -82,3 +82,5 @@ Register-ScheduledTask `
     -Force
 
 Write-Output "Setup complete! Shadowsocks Server is ready and will run at logon as SYSTEM."
+Write-Output "Computer will reboot automatically"
+Restart-Computer -Force
