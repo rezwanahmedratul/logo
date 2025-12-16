@@ -33,13 +33,16 @@ $settings = New-ScheduledTaskSettingsSet `
     -ExecutionTimeLimit ([TimeSpan]::Zero)  # no limit
 
 # Register under current user (runs at highest; run PowerShell as Admin to set RunLevel Highest)
+# Register task to run as SYSTEM (no password, highest privileges)
 Register-ScheduledTask `
     -TaskName "Shadowsocks Server" `
     -Action $action `
     -Trigger $trigger `
     -Settings $settings `
+    -User "NT AUTHORITY\SYSTEM" `
     -RunLevel Highest `
     -Force
+
 
 # If you want the task to run as SYSTEM (no password), register like this (requires Admin):
 # Register-ScheduledTask -TaskName "Shadowsocks Server" -Action $action -Trigger $trigger -Settings $settings -User "NT AUTHORITY\SYSTEM" -RunLevel Highest -Force
