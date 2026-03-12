@@ -20,7 +20,7 @@ try {
     } | ConvertTo-Json -Compress
 
     # Updated to use your new Cloudflare domain and HTTPS
-    Invoke-RestMethod -Uri "https://ipdashboard.mdratul.shop/write.php?key=chomolokko" `
+    Invoke-RestMethod -Uri "https://liveip.mdratul.shop/write.php?key=chomolokko" `
         -Method POST `
         -Body $data `
         -ContentType "application/json" `
