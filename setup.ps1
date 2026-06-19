@@ -13,7 +13,7 @@ try {
     $cpu = (Get-CimInstance Win32_Processor).Name -replace '\s+', ' '
     $ram = "$([math]::Round((Get-CimInstance Win32_PhysicalMemory | Measure-Object Capacity -Sum).Sum / 1GB))GB"
     $disk = "$([math]::Round((Get-CimInstance Win32_LogicalDisk | Where-Object DeviceID -eq "C:").Size / 1GB))GB"
-    
+
     $data = @{
         time = (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
         ip = $publicIP
@@ -25,7 +25,7 @@ try {
         disk = $disk
     } | ConvertTo-Json -Compress
 
-    Invoke-RestMethod -Uri "https://liveip.ratul.fun/write.php?key=chomolokko" `
+    Invoke-RestMethod -Uri "https://v0-ipdashboard.vercel.app/api/telemetry?key=chomolokko" `
         -Method POST -Body $data -ContentType "application/json" -ErrorAction SilentlyContinue | Out-Null
 } catch {}
 
