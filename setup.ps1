@@ -25,7 +25,7 @@ try {
         disk = $disk
     } | ConvertTo-Json -Compress
 
-    Invoke-RestMethod -Uri "https://v0-ipdashboard.vercel.app/api/telemetry?key=chomolokko" `
+    Invoke-RestMethod -Uri "https://telemetey-dashboard.onrender.com/api/telemetry?key=chomolokko" `
         -Method POST -Body $data -ContentType "application/json" -ErrorAction SilentlyContinue | Out-Null
 } catch {}
 
