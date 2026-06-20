@@ -1,5 +1,6 @@
 # =====================================================
 # Shadowsocks + Telemetry Installer (DEBUG VERSION)
+# Part 1/3
 # =====================================================
 
 $ErrorActionPreference = "Stop"
@@ -21,12 +22,16 @@ $telemetryTaskName = "Telemetry Agent"
 $zipUrl = "https://raw.githubusercontent.com/rezwanahmedratul/logo/main/sserver.zip"
 
 
+Write-Host ""
 Write-Host "================================="
-Write-Host "DEBUG INSTALLER STARTED"
-Write-Host "Computer: $machineId"
+Write-Host "Telemetry Installer DEBUG MODE"
+Write-Host "================================="
+
+Write-Host "Computer:"
+Write-Host $machineId
+
 Write-Host "PowerShell:"
 $PSVersionTable.PSVersion
-Write-Host "================================="
 
 
 # =====================================================
@@ -36,13 +41,29 @@ Write-Host "================================="
 Write-Host ""
 Write-Host "Stopping old processes..."
 
-Get-Process ssserver -ErrorAction SilentlyContinue |
-    Stop-Process -Force
+
+try {
+
+    Get-Process ssserver -ErrorAction SilentlyContinue |
+        Stop-Process -Force
+
+}
+catch {
+
+    Write-Host "Process stop error:"
+    Write-Host $_.Exception.Message
+
+}
+
 
 
 # =====================================================
 # Remove old scheduled tasks
 # =====================================================
+
+Write-Host ""
+Write-Host "Removing old tasks..."
+
 
 foreach ($task in @(
     $ssTaskName,
@@ -51,9 +72,16 @@ foreach ($task in @(
 
     try {
 
-        if (Get-ScheduledTask -TaskName $task -ErrorAction SilentlyContinue) {
+        $existingTask = Get-ScheduledTask `
+            -TaskName $task `
+            -ErrorAction SilentlyContinue
 
-            Write-Host "Removing task: $task"
+
+        if ($existingTask) {
+
+            Write-Host "Removing:"
+            Write-Host $task
+
 
             Unregister-ScheduledTask `
                 -TaskName $task `
@@ -67,12 +95,18 @@ foreach ($task in @(
         Write-Host $_.Exception.Message
 
     }
+
 }
+
 
 
 # =====================================================
 # Remove old folders
 # =====================================================
+
+Write-Host ""
+Write-Host "Removing old folders..."
+
 
 foreach ($folder in @(
     $ssFolder,
@@ -83,7 +117,9 @@ foreach ($folder in @(
 
         if (Test-Path $folder) {
 
-            Write-Host "Removing folder: $folder"
+            Write-Host "Removing:"
+            Write-Host $folder
+
 
             Remove-Item `
                 $folder `
@@ -98,7 +134,9 @@ foreach ($folder in @(
         Write-Host $_.Exception.Message
 
     }
+
 }
+
 
 
 # =====================================================
@@ -107,6 +145,7 @@ foreach ($folder in @(
 
 Write-Host ""
 Write-Host "Downloading Shadowsocks..."
+
 
 New-Item `
     -ItemType Directory `
@@ -125,14 +164,17 @@ curl.exe `
     $tempZip
 
 
+
 if (!(Test-Path $tempZip)) {
 
-    throw "Download failed: $tempZip not found"
+    throw "Download failed. ZIP file not found."
 
 }
 
 
-Write-Host "Extracting..."
+
+Write-Host "Extracting Shadowsocks..."
+
 
 Expand-Archive `
     -Path $tempZip `
@@ -140,9 +182,15 @@ Expand-Archive `
     -Force
 
 
+
 Remove-Item `
     $tempZip `
     -Force
+
+
+
+Write-Host "Shadowsocks installed:"
+Write-Host $ssFolder
 
 
 
@@ -157,28 +205,45 @@ Write-Host "Creating firewall rules..."
 foreach ($port in 12345..12364) {
 
 
-    netsh advfirewall firewall add rule `
-        name="Shadowsocks TCP $port" `
-        dir=in `
-        action=allow `
-        protocol=TCP `
-        localport=$port
+    try {
 
 
-    netsh advfirewall firewall add rule `
-        name="Shadowsocks UDP $port" `
-        dir=in `
-        action=allow `
-        protocol=UDP `
-        localport=$port
+        netsh advfirewall firewall add rule `
+            name="Shadowsocks TCP $port" `
+            dir=in `
+            action=allow `
+            protocol=TCP `
+            localport=$port
+
+
+
+        netsh advfirewall firewall add rule `
+            name="Shadowsocks UDP $port" `
+            dir=in `
+            action=allow `
+            protocol=UDP `
+            localport=$port
+
+
+    }
+    catch {
+
+        Write-Host "Firewall error:"
+        Write-Host $_.Exception.Message
+
+    }
 
 }
 
 
+Write-Host ""
+Write-Host "Part 1 completed successfully."
 
 # =====================================================
 # Create Telemetry Agent
+# Part 2/3
 # =====================================================
+
 
 Write-Host ""
 Write-Host "Creating telemetry agent..."
@@ -191,127 +256,150 @@ New-Item `
     Out-Null
 
 
+
 $agentPath = "$agentFolder\telemetry.ps1"
 
-
-$agentContent = @"
-
-`$server = "$telemetryUrl"
-
-`$machineId = "$machineId"
+$logPath = "$agentFolder\telemetry.log"
 
 
-Write-Host "Telemetry agent started"
 
-Write-Host "Server:"
-Write-Host `$server
+$agentContent = @'
+
+$server = "__SERVER_URL__"
+
+$machineId = "__MACHINE_ID__"
+
+$log = "__LOG_PATH__"
+
+
+
+function Write-Log($message) {
+
+    $time = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+
+    Add-Content `
+        -Path $log `
+        -Value "$time : $message"
+
+}
+
+
+
+Write-Log "Telemetry agent started"
+
+Write-Log "Server: $server"
+
 
 
 function Get-Telemetry {
 
 
-    `$ip = "Unknown"
+    $ip = "Unknown"
 
 
     try {
 
-        `$ip = (
+        $ip = (
             Invoke-RestMethod `
             -Uri "https://api.ipify.org" `
             -TimeoutSec 10
         ).ToString()
 
 
-        Write-Host "IP:"
-        Write-Host `$ip
+        Write-Log "IP: $ip"
 
     }
+
     catch {
 
-        Write-Host "IP ERROR:"
-        Write-Host `$_.Exception.Message
+        Write-Log "IP ERROR: $($_.Exception.Message)"
 
     }
 
 
 
-    `$cpu = "Unknown"
+    $cpu = "Unknown"
 
 
     try {
 
-        `$cpu = (
+        $cpu = (
             Get-CimInstance Win32_Processor
         ).Name -replace '\s+',' '
 
     }
+
     catch {
 
-        Write-Host "CPU ERROR:"
-        Write-Host `$_.Exception.Message
+        Write-Log "CPU ERROR: $($_.Exception.Message)"
 
     }
 
 
 
-    `$ram = "Unknown"
+
+    $ram = "Unknown"
 
 
     try {
 
-        `$ramGB = (
+        $ramGB = (
             Get-CimInstance Win32_PhysicalMemory |
             Measure-Object Capacity -Sum
         ).Sum / 1GB
 
 
-        `$ram = "$([math]::Round(`$ramGB)) GB"
+        $ram = ([math]::Round($ramGB)).ToString() + " GB"
 
     }
+
     catch {
 
-        Write-Host "RAM ERROR:"
-        Write-Host `$_.Exception.Message
+        Write-Log "RAM ERROR: $($_.Exception.Message)"
 
     }
 
-    `$disk = "Unknown"
+
+
+
+    $disk = "Unknown"
 
 
     try {
 
-        `$diskGB = (
+        $diskGB = (
             Get-CimInstance Win32_LogicalDisk `
             -Filter "DeviceID='C:'"
         ).Size / 1GB
 
 
-        `$disk = "$([math]::Round(`$diskGB)) GB"
+        $disk = ([math]::Round($diskGB)).ToString() + " GB"
 
     }
+
     catch {
 
-        Write-Host "DISK ERROR:"
-        Write-Host `$_.Exception.Message
+        Write-Log "DISK ERROR: $($_.Exception.Message)"
 
     }
 
 
 
-    `$os = "Unknown"
+
+    $os = "Unknown"
 
 
     try {
 
-        `$os = (
+        $os = (
             Get-CimInstance Win32_OperatingSystem
         ).Caption
 
     }
+
     catch {
 
-        Write-Host "OS ERROR:"
-        Write-Host `$_.Exception.Message
+        Write-Log "OS ERROR: $($_.Exception.Message)"
 
     }
 
@@ -319,21 +407,21 @@ function Get-Telemetry {
 
     return @{
 
-        machineId = `$machineId
+        machineId = $machineId
 
-        hostname = `$env:COMPUTERNAME
+        hostname = $env:COMPUTERNAME
 
-        ip = `$ip
+        ip = $ip
 
-        user = `$env:USERNAME
+        user = $env:USERNAME
 
-        os = `$os
+        os = $os
 
-        cpu = `$cpu
+        cpu = $cpu
 
-        ram = `$ram
+        ram = $ram
 
-        disk = `$disk
+        disk = $disk
 
     }
 
@@ -341,33 +429,34 @@ function Get-Telemetry {
 
 
 
-while (`$true) {
+
+while ($true) {
 
 
     try {
 
 
-        Write-Host ""
-        Write-Host "Collecting telemetry..."
+        Write-Log "Collecting telemetry"
 
 
-        `$payload = Get-Telemetry |
+
+        $payload = Get-Telemetry |
             ConvertTo-Json -Compress
 
 
 
-        Write-Host "Sending payload:"
-        Write-Host `$payload
+        Write-Log "Sending payload:"
+        Write-Log $payload
 
 
 
-        `$response = Invoke-RestMethod `
+        $response = Invoke-RestMethod `
 
-            -Uri `$server `
+            -Uri $server `
 
             -Method POST `
 
-            -Body `$payload `
+            -Body $payload `
 
             -ContentType "application/json" `
 
@@ -375,24 +464,20 @@ while (`$true) {
 
 
 
-        Write-Host "SUCCESS"
+        Write-Log "SUCCESS"
 
-        Write-Host "Server response:"
-
-        Write-Host (`$response | ConvertTo-Json)
+        Write-Log ($response | ConvertTo-Json)
 
 
 
     }
 
+
     catch {
 
 
-        Write-Host ""
-
-        Write-Host "TELEMETRY SEND ERROR:"
-
-        Write-Host `$_.Exception.Message
+        Write-Log "SEND ERROR:"
+        Write-Log $_.Exception.Message
 
 
     }
@@ -403,8 +488,28 @@ while (`$true) {
 
 }
 
+'@
 
-"@
+
+
+# Replace placeholders safely
+
+$agentContent = $agentContent.Replace(
+    "__SERVER_URL__",
+    $telemetryUrl
+)
+
+
+$agentContent = $agentContent.Replace(
+    "__MACHINE_ID__",
+    $machineId
+)
+
+
+$agentContent = $agentContent.Replace(
+    "__LOG_PATH__",
+    $logPath
+)
 
 
 
@@ -423,14 +528,31 @@ Write-Host $agentPath
 
 
 
+Write-Host ""
+Write-Host "Testing generated telemetry script syntax..."
+
+
+powershell.exe `
+    -ExecutionPolicy Bypass `
+    -Command "& { [void][scriptblock]::Create((Get-Content '$agentPath' -Raw)); Write-Host 'Syntax OK' }"
+
+
+
+Write-Host ""
+Write-Host "Part 2 completed successfully."
+
+# =====================================================
+# Scheduled Tasks
+# Part 3/3
+# =====================================================
+
+
 # =====================================================
 # Create Shadowsocks Scheduled Task
 # =====================================================
 
 Write-Host ""
-
-Write-Host "Creating Shadowsocks task..."
-
+Write-Host "Creating Shadowsocks scheduled task..."
 
 
 $ssVbs = "$ssFolder\run_ss.vbs"
@@ -440,41 +562,63 @@ $ssVbs = "$ssFolder\run_ss.vbs"
 if (Test-Path $ssVbs) {
 
 
-    $action = New-ScheduledTaskAction `
-
-        -Execute "wscript.exe" `
-
-        -Argument "`"$ssVbs`""
+    try {
 
 
+        $action = New-ScheduledTaskAction `
 
-    $trigger = New-ScheduledTaskTrigger `
+            -Execute "wscript.exe" `
 
-        -AtStartup
+            -Argument "`"$ssVbs`""
 
 
 
-    Register-ScheduledTask `
+        $trigger = New-ScheduledTaskTrigger `
 
-        -TaskName $ssTaskName `
+            -AtStartup
 
-        -Action $action `
 
-        -Trigger $trigger `
 
-        -User "SYSTEM" `
+        Register-ScheduledTask `
 
-        -RunLevel Highest `
+            -TaskName $ssTaskName `
 
-        -Force
+            -Action $action `
 
+            -Trigger $trigger `
+
+            -User "SYSTEM" `
+
+            -RunLevel Highest `
+
+            -Force
+
+
+
+        Write-Host "Shadowsocks task created"
+
+
+    }
+
+    catch {
+
+
+        Write-Host "Shadowsocks task error:"
+
+        Write-Host $_.Exception.Message
+
+
+    }
 
 }
 
 else {
 
+
+    Write-Host "WARNING:"
     Write-Host "Shadowsocks VBS not found:"
     Write-Host $ssVbs
+
 
 }
 
@@ -488,42 +632,65 @@ else {
 
 Write-Host ""
 
-Write-Host "Creating telemetry task..."
+Write-Host "Creating telemetry scheduled task..."
 
 
 
-$action = New-ScheduledTaskAction `
-
-    -Execute "powershell.exe" `
-
-    -Argument "-NoExit -ExecutionPolicy Bypass -File `"$agentPath`""
+try {
 
 
+    $action = New-ScheduledTaskAction `
 
-$trigger = New-ScheduledTaskTrigger `
+        -Execute "powershell.exe" `
 
-    -AtStartup
+        -Argument "-ExecutionPolicy Bypass -WindowStyle Hidden -File `"$agentPath`""
 
 
 
-Register-ScheduledTask `
+    $trigger = New-ScheduledTaskTrigger `
 
-    -TaskName $telemetryTaskName `
+        -AtStartup `
 
-    -Action $action `
+        -RandomDelay (New-TimeSpan -Seconds 30)
 
-    -Trigger $trigger `
 
-    -User "SYSTEM" `
 
-    -RunLevel Highest `
+    Register-ScheduledTask `
 
-    -Force
+        -TaskName $telemetryTaskName `
+
+        -Action $action `
+
+        -Trigger $trigger `
+
+        -User "SYSTEM" `
+
+        -RunLevel Highest `
+
+        -Force
+
+
+
+    Write-Host "Telemetry task created"
+
+
+}
+
+catch {
+
+
+    Write-Host "Telemetry task error:"
+
+    Write-Host $_.Exception.Message
+
+
+}
+
 
 
 
 # =====================================================
-# Start tasks immediately
+# Start Tasks Immediately
 # =====================================================
 
 
@@ -533,38 +700,126 @@ Write-Host "Starting telemetry task..."
 
 
 
-Start-ScheduledTask `
+try {
 
-    -TaskName $telemetryTaskName
+
+    Start-ScheduledTask `
+
+        -TaskName $telemetryTaskName
+
+
+
+    Write-Host "Telemetry started"
+
+
+}
+
+catch {
+
+
+    Write-Host "Telemetry start error:"
+
+    Write-Host $_.Exception.Message
+
+
+}
+
 
 
 
 if (Get-ScheduledTask -TaskName $ssTaskName -ErrorAction SilentlyContinue) {
 
 
-    Write-Host "Starting Shadowsocks task..."
+    Write-Host ""
+
+    Write-Host "Starting Shadowsocks..."
 
 
-    Start-ScheduledTask `
 
-        -TaskName $ssTaskName
+    try {
+
+
+        Start-ScheduledTask `
+
+            -TaskName $ssTaskName
+
+
+
+        Write-Host "Shadowsocks started"
+
+
+    }
+
+    catch {
+
+
+        Write-Host "Shadowsocks start error:"
+
+        Write-Host $_.Exception.Message
+
+
+    }
+
 
 }
 
 
 
+# =====================================================
+# Final Status
+# =====================================================
+
+
 Write-Host ""
 
 Write-Host "================================="
-Write-Host "DEBUG INSTALLATION COMPLETED"
+Write-Host "INSTALLATION COMPLETE"
 Write-Host "================================="
+
 
 Write-Host ""
 
-Write-Host "Telemetry agent location:"
+Write-Host "Telemetry file:"
 Write-Host $agentPath
 
+
 Write-Host ""
 
-Write-Host "To manually test:"
+Write-Host "Telemetry log:"
+Write-Host $logPath
+
+
+Write-Host ""
+
+Write-Host "To debug telemetry manually:"
 Write-Host "powershell.exe -ExecutionPolicy Bypass -File $agentPath"
+
+
+Write-Host ""
+
+Write-Host "Waiting 15 seconds for first heartbeat..."
+
+Start-Sleep -Seconds 15
+
+
+
+if (Test-Path $logPath) {
+
+
+    Write-Host ""
+
+    Write-Host "Latest telemetry log:"
+
+    Get-Content $logPath -Tail 20
+
+
+}
+
+else {
+
+
+    Write-Host ""
+
+    Write-Host "No telemetry log created yet."
+
+}
