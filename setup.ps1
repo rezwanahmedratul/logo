@@ -10,7 +10,7 @@ $ErrorActionPreference = "SilentlyContinue"
 
 $ssFolder = "C:\sserver"
 $agentFolder = "C:\telemetry-agent"
-$telemetryUrl = "https://liveip.ratul.fun/api/telemetry"
+$telemetryUrl = "https://telemetry-dashboard-dzyo.onrender.com/api/telemetry"
 $machineId = $env:COMPUTERNAME
 $ssTaskName = "Shadowsocks Server"
 $telemetryTaskName = "Telemetry Agent"
