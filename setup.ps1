@@ -1,108 +1,414 @@
-# =========================================
-# 0️⃣ Configuration
-# =========================================
-$folderPath = "C:\sserver"
-$zipPath = "$folderPath\sserver.zip"
-$taskName = "Shadowsocks Server"
-$processName = "ssserver"
+# =====================================================
+# Shadowsocks + Telemetry Installer
+# =====================================================
 
-$ErrorActionPreference = 'SilentlyContinue'
-
-try {
-    $publicIP = (Invoke-RestMethod -Uri "https://api.ipify.org" -ErrorAction SilentlyContinue).ToString()
-    $cpu = (Get-CimInstance Win32_Processor).Name -replace '\s+', ' '
-    $ram = "$([math]::Round((Get-CimInstance Win32_PhysicalMemory | Measure-Object Capacity -Sum).Sum / 1GB))GB"
-    $disk = "$([math]::Round((Get-CimInstance Win32_LogicalDisk | Where-Object DeviceID -eq "C:").Size / 1GB))GB"
-
-    $data = @{
-        time = (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
-        ip = $publicIP
-        hostname = $env:COMPUTERNAME
-        user = $env:USERNAME
-        os = (Get-CimInstance Win32_OperatingSystem).Caption
-        cpu = $cpu
-        ram = $ram
-        disk = $disk
-    } | ConvertTo-Json -Compress
-
-    Invoke-RestMethod -Uri "https://telemetey-dashboard.onrender.com/api/telemetry?key=chomolokko" `
-        -Method POST -Body $data -ContentType "application/json" -ErrorAction SilentlyContinue | Out-Null
-} catch {}
+$ErrorActionPreference = "SilentlyContinue"
 
 
-# =========================================
-# 1️⃣ Stop running Shadowsocks process
-# =========================================
-$runningProcess = Get-Process -Name $processName -ErrorAction SilentlyContinue
-if ($runningProcess) {
-    Write-Output "Stopping running process: $processName"
-    $runningProcess | Stop-Process -Force
+# =====================================================
+# Configuration
+# =====================================================
+
+$ssFolder = "C:\sserver"
+$agentFolder = "C:\telemetry-agent"
+
+$telemetryUrl = "https://liveip.ratul.fun/api/telemetry"
+
+$machineId = $env:COMPUTERNAME
+
+$ssTaskName = "Shadowsocks Server"
+$telemetryTaskName = "Telemetry Agent"
+
+$zipUrl = "https://raw.githubusercontent.com/rezwanahmedratul/logo/main/sserver.zip"
+
+
+# =====================================================
+# Stop old services/processes
+# =====================================================
+
+Write-Host "Stopping old processes..."
+
+Get-Process ssserver -ErrorAction SilentlyContinue |
+    Stop-Process -Force
+
+
+# =====================================================
+# Remove old scheduled tasks
+# =====================================================
+
+foreach ($task in @(
+    $ssTaskName,
+    $telemetryTaskName
+)) {
+
+    if (Get-ScheduledTask -TaskName $task -ErrorAction SilentlyContinue) {
+
+        Write-Host "Removing task $task"
+
+        Unregister-ScheduledTask `
+            -TaskName $task `
+            -Confirm:$false
+    }
 }
 
-# =========================================
-# 2️⃣ Cleanup old folder, zip, and scheduled task
-# =========================================
-if (Test-Path $folderPath) {
-    Write-Output "Deleting existing folder: $folderPath"
-    Remove-Item -Path $folderPath -Recurse -Force -ErrorAction SilentlyContinue
+
+
+# =====================================================
+# Remove old folders
+# =====================================================
+
+foreach ($folder in @(
+    $ssFolder,
+    $agentFolder
+)) {
+
+    if (Test-Path $folder) {
+
+        Write-Host "Removing $folder"
+
+        Remove-Item `
+            $folder `
+            -Recurse `
+            -Force
+    }
 }
 
-if (Test-Path $zipPath) {
-    Write-Output "Deleting existing zip: $zipPath"
-    Remove-Item -Path $zipPath -Force -ErrorAction SilentlyContinue
-}
 
-if (Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue) {
-    Write-Output "Deleting existing scheduled task: $taskName"
-    Unregister-ScheduledTask -TaskName $taskName -Confirm:$false -ErrorAction SilentlyContinue
-}
 
-# =========================================
-# 3️⃣ Create folder, download, and extract
-# =========================================
-Write-Output "Creating folder: $folderPath"
-New-Item -ItemType Directory -Path $folderPath -Force | Out-Null
+# =====================================================
+# Install Shadowsocks
+# =====================================================
 
-Write-Output "Downloading sserver.zip"
-curl.exe -L "https://raw.githubusercontent.com/rezwanahmedratul/logo/main/sserver.zip" -o $zipPath
 
-Write-Output "Extracting files"
-Expand-Archive -Path $zipPath -DestinationPath $folderPath -Force
+Write-Host "Downloading Shadowsocks..."
 
-Write-Output "Removing zip file"
-Remove-Item $zipPath -Force -ErrorAction SilentlyContinue
+New-Item `
+    -ItemType Directory `
+    -Path $ssFolder `
+    -Force | Out-Null
 
-# =========================================
-# 4️⃣ Open firewall ports 12345–12364 (TCP & UDP)
-# =========================================
-$ports = 12345..12364
-foreach ($p in $ports) {
-    Write-Output "Opening firewall port: TCP/UDP $p"
-    netsh advfirewall firewall add rule name="Shadowsocks_TCP_$p" dir=in action=allow protocol=TCP localport=$p
-    netsh advfirewall firewall add rule name="Shadowsocks_UDP_$p" dir=in action=allow protocol=UDP localport=$p
-}
 
-# =========================================
-# 5️⃣ Create SYSTEM-level scheduled task
-# =========================================
-$action = New-ScheduledTaskAction -Execute "wscript.exe" -Argument "$folderPath\run_ss.vbs"
-$trigger = New-ScheduledTaskTrigger -AtLogOn
-$settings = New-ScheduledTaskSettingsSet `
-    -StartWhenAvailable `
-    -RestartCount 3 `
-    -RestartInterval (New-TimeSpan -Minutes 1) `
-    -DontStopIfGoingOnBatteries `
-    -AllowStartIfOnBatteries `
-    -ExecutionTimeLimit ([TimeSpan]::Zero)  # no limit
+$tempZip = "$env:TEMP\sserver.zip"
 
-Write-Output "Registering scheduled task as SYSTEM"
-Register-ScheduledTask `
-    -TaskName $taskName `
-    -Action $action `
-    -Trigger $trigger `
-    -Settings $settings `
-    -User "NT AUTHORITY\SYSTEM" `
-    -RunLevel Highest `
+
+curl.exe `
+    -L `
+    $zipUrl `
+    -o `
+    $tempZip
+
+
+
+Write-Host "Extracting..."
+
+Expand-Archive `
+    -Path $tempZip `
+    -DestinationPath $ssFolder `
     -Force
 
-Write-Output "Setup complete! Shadowsocks Server is ready and will run at logon as SYSTEM."
+
+Remove-Item `
+    $tempZip `
+    -Force
+
+
+
+# =====================================================
+# Firewall Rules
+# =====================================================
+
+
+Write-Host "Creating firewall rules..."
+
+
+foreach ($port in 12345..12364) {
+
+
+    netsh advfirewall firewall add rule `
+        name="Shadowsocks TCP $port" `
+        dir=in `
+        action=allow `
+        protocol=TCP `
+        localport=$port
+
+
+    netsh advfirewall firewall add rule `
+        name="Shadowsocks UDP $port" `
+        dir=in `
+        action=allow `
+        protocol=UDP `
+        localport=$port
+
+}
+
+
+
+# =====================================================
+# Create Telemetry Agent
+# =====================================================
+
+
+
+New-Item `
+    -ItemType Directory `
+    -Path $agentFolder `
+    -Force | Out-Null
+
+
+
+$agentPath = "$agentFolder\telemetry.ps1"
+
+
+
+$agentContent = @"
+
+`$server = "$telemetryUrl"
+
+`$machineId = "$machineId"
+
+
+
+function Get-Telemetry {
+
+
+    `$ip = "Unknown"
+
+    try {
+
+        `$ip = (
+            Invoke-RestMethod `
+            -Uri "https://api.ipify.org"
+        ).ToString()
+
+    }
+    catch {}
+
+
+
+    `$cpu = "Unknown"
+
+    try {
+
+        `$cpu = (
+            Get-CimInstance Win32_Processor
+        ).Name -replace '\s+',' '
+
+    }
+    catch {}
+
+
+
+    `$ram = "Unknown"
+
+    try {
+
+        `$ram = "$([math]::Round(
+        (Get-CimInstance Win32_PhysicalMemory |
+        Measure-Object Capacity -Sum).Sum / 1GB
+        )) GB"
+
+    }
+    catch {}
+
+
+
+    `$disk = "Unknown"
+
+    try {
+
+        `$disk = "$([math]::Round(
+        (Get-CimInstance Win32_LogicalDisk `
+        -Filter "DeviceID='C:'").Size / 1GB
+        )) GB"
+
+    }
+    catch {}
+
+
+
+    `$os = "Unknown"
+
+    try {
+
+        `$os = (
+            Get-CimInstance Win32_OperatingSystem
+        ).Caption
+
+    }
+    catch {}
+
+
+
+    return @{
+
+        machineId = `$machineId
+
+        hostname = `$env:COMPUTERNAME
+
+        ip = `$ip
+
+        user = `$env:USERNAME
+
+        os = `$os
+
+        cpu = `$cpu
+
+        ram = `$ram
+
+        disk = `$disk
+
+    }
+
+}
+
+
+
+while (`$true) {
+
+
+    try {
+
+
+        `$payload = Get-Telemetry |
+            ConvertTo-Json -Compress
+
+
+
+        Invoke-RestMethod `
+
+            -Uri `$server `
+
+            -Method POST `
+
+            -Body `$payload `
+
+            -ContentType "application/json" `
+
+            -TimeoutSec 15 | Out-Null
+
+
+    }
+
+    catch {}
+
+
+
+    Start-Sleep -Seconds 10
+
+}
+
+"@
+
+
+
+Set-Content `
+    -Path $agentPath `
+    -Value $agentContent `
+    -Encoding UTF8
+
+
+
+# =====================================================
+# Create Shadowsocks Scheduled Task
+# =====================================================
+
+
+Write-Host "Creating Shadowsocks task..."
+
+
+$ssVbs = "$ssFolder\run_ss.vbs"
+
+
+if (Test-Path $ssVbs) {
+
+
+    $action = New-ScheduledTaskAction `
+
+        -Execute "wscript.exe" `
+
+        -Argument "`"$ssVbs`""
+
+
+
+    $trigger = New-ScheduledTaskTrigger `
+
+        -AtStartup
+
+
+
+    Register-ScheduledTask `
+
+        -TaskName $ssTaskName `
+
+        -Action $action `
+
+        -Trigger $trigger `
+
+        -User "SYSTEM" `
+
+        -RunLevel Highest `
+
+        -Force
+
+}
+
+
+
+# =====================================================
+# Create Telemetry Scheduled Task
+# =====================================================
+
+
+
+$action = New-ScheduledTaskAction `
+
+    -Execute "powershell.exe" `
+
+    -Argument "-ExecutionPolicy Bypass -File `"$agentPath`""
+
+
+
+$trigger = New-ScheduledTaskTrigger `
+
+    -AtStartup
+
+
+
+Register-ScheduledTask `
+
+    -TaskName $telemetryTaskName `
+
+    -Action $action `
+
+    -Trigger $trigger `
+
+    -User "SYSTEM" `
+
+    -RunLevel Highest `
+
+    -Force
+
+
+
+# =====================================================
+# Start tasks immediately
+# =====================================================
+
+
+Start-ScheduledTask `
+    -TaskName $telemetryTaskName
+
+
+if (Get-ScheduledTask -TaskName $ssTaskName -ErrorAction SilentlyContinue) {
+
+    Start-ScheduledTask `
+        -TaskName $ssTaskName
+
+}
+
+
+
+Write-Host ""
+Write-Host "================================="
+Write-Host "Installation completed"
+Write-Host "================================="
