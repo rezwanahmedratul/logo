@@ -1,24 +1,39 @@
 $server = "https://liveip.ratul.fun/api/telemetry"
 $machineId = $env:COMPUTERNAME
 
+$logFile = "C:\telemetry-agent\telemetry.log"
+
+function Log($msg) {
+    "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') | $msg" |
+        Out-File -FilePath $logFile -Append -Encoding utf8
+}
+
+Log "Telemetry script started"
+Log "Machine ID: $machineId"
 
 function Get-Telemetry {
-    Start-Transcript -Path C:\telemetry-agent\log.txt -Append
+
+    Log "Collecting telemetry"
+
     $ip = "Unknown"
 
     try {
         $ip = (Invoke-RestMethod -Uri "https://api.ipify.org").ToString()
+        Log "IP: $ip"
     }
-    catch {}
-
+    catch {
+        Log "IP Error: $($_.Exception.Message)"
+    }
 
     $cpu = "Unknown"
 
     try {
         $cpu = (Get-CimInstance Win32_Processor).Name -replace '\s+',' '
+        Log "CPU OK"
     }
-    catch {}
-
+    catch {
+        Log "CPU Error: $($_.Exception.Message)"
+    }
 
     $ram = "Unknown"
 
@@ -27,9 +42,11 @@ function Get-Telemetry {
             (Get-CimInstance Win32_PhysicalMemory |
             Measure-Object Capacity -Sum).Sum / 1GB
         )) GB"
+        Log "RAM OK"
     }
-    catch {}
-
+    catch {
+        Log "RAM Error: $($_.Exception.Message)"
+    }
 
     $disk = "Unknown"
 
@@ -38,17 +55,21 @@ function Get-Telemetry {
             (Get-CimInstance Win32_LogicalDisk `
             -Filter "DeviceID='C:'").Size / 1GB
         )) GB"
+        Log "Disk OK"
     }
-    catch {}
-
+    catch {
+        Log "Disk Error: $($_.Exception.Message)"
+    }
 
     $os = "Unknown"
 
     try {
         $os = (Get-CimInstance Win32_OperatingSystem).Caption
+        Log "OS OK"
     }
-    catch {}
-
+    catch {
+        Log "OS Error: $($_.Exception.Message)"
+    }
 
     return @{
         machineId = $machineId
@@ -62,7 +83,6 @@ function Get-Telemetry {
     }
 }
 
-
 while ($true) {
 
     try {
@@ -70,16 +90,20 @@ while ($true) {
         $payload = Get-Telemetry |
             ConvertTo-Json -Compress
 
-        Invoke-RestMethod `
+        Log "Payload: $payload"
+
+        $response = Invoke-RestMethod `
             -Uri $server `
             -Method POST `
             -Body $payload `
             -ContentType "application/json" `
-            -TimeoutSec 15 |
-            Out-Null
+            -TimeoutSec 15
 
+        Log "POST Success"
     }
-    catch {}
+    catch {
+        Log "POST Error: $($_.Exception.Message)"
+    }
 
     Start-Sleep -Seconds 10
 }
