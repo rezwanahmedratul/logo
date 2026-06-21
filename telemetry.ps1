@@ -3,7 +3,7 @@ $machineId = $env:COMPUTERNAME
 
 
 function Get-Telemetry {
-
+    Start-Transcript -Path C:\telemetry-agent\log.txt -Append
     $ip = "Unknown"
 
     try {
