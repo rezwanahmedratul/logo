@@ -1,4 +1,18 @@
 #EXTM3U
+#EXTINF:-1 group-title="FIFA-2026",FIFA World Cup 2026🅱️
+https://tvsen7.aynaott.com/tsports-hd/tracks-v1a1/mono.ts.m3u8
+#EXTINF:-1 group-title="FIFA-2026",FIFA World Cup 2026
+https://owrcovcrpy.gpcdn.net/bpk-tv/1709/output/index.m3u8
+#EXTINF:-1 group-title="FIFA-2026",FIFA World Cup 2026
+https://owrcovcrpy.gpcdn.net/bpk-tv/1702/output/1702-audio_113322_eng=113200-video=2202800.m3u8
+#EXTINF:-1 group-title="FIFA-2026",FIFA World Cup 2026 🇦🇷 [Coming]
+http://cdn.tv-rds.workers.dev/TYCSPT.m3u8
+#EXTINF:-1 group-title="FIFA-2026",FIFA World Cup 2026 🇧🇷 [Coming]
+https://dfr80qz435crc.cloudfront.net/MNOP/Amagi/Caze/Caze_TV_BR/1080p-vtt/index.m3u8
+#EXTINF:-1 group-title="FIFA-2026",FIFA World Cup 2026 🇮🇳 [Coming]
+http://66.102.126.10:8000/play/a076/index.m3u8
+#EXTINF:-1 group-title="FIFA-2026",FIFA World Cup 2026 🇮🇳 [Coming]
+http://66.102.126.10:8000/play/a022/index.m3u8
 #EXTINF:-1 tvg-logo="https://ssl.com.bd/sites/default/files/BTV%20Logo%20Gallery.png" group-title="BANGLA",BTV
 http://198.195.239.50:8095/btv/tracks-v1a1/mono.m3u8
 #EXTINF:-1 tvg-logo="https://ssl.com.bd/sites/default/files/BTV%20Logo%20Gallery.png" group-title="BANGLA",Sangshod tv
