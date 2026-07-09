@@ -62,7 +62,14 @@ if (Get-ScheduledTask -TaskName $ssTaskName -ErrorAction SilentlyContinue) {
     Start-ScheduledTask -TaskName $ssTaskName
 }
 
-Write-Host ""
 Write-Host "================================="
 Write-Host "Installation completed"
+Write-Host "Your Computer will restart in 5 seconds to apply changes."
 Write-Host "================================="
+
+for ($i = 5; $i -gt 0; $i--) {
+    Write-Host "Restarting in $i..."
+    Start-Sleep -Seconds 1
+}
+
+Restart-Computer -Force
