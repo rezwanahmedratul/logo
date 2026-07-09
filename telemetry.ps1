@@ -1,11 +1,3 @@
-# =====================================================
-# Telemetry Agent - reports to WebUI
-# =====================================================
-# The WebUI forwards the payload to the database.
-# Override the target with the WEBUI_URL env var:
-#   $env:WEBUI_URL = "https://your-site.com"
-# =====================================================
-
 $webuiUrl = $env:WEBUI_URL
 if ([string]::IsNullOrWhiteSpace($webuiUrl)) {
     $webuiUrl = "https://liveip.ratul.fun"
@@ -52,7 +44,6 @@ function Get-Telemetry {
     }
 }
 
-# Force TLS 1.2+ for the outbound HTTPS call
 try {
     [Net.ServicePointManager]::SecurityProtocol = `
         [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13
