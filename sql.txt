@@ -1,0 +1,6 @@
+Server=sql.ratul.fun;
+Database=master;
+User Id=sa;
+Password=YourStrong@Password123;
+TrustServerCertificate=True;
+Encrypt=True;
